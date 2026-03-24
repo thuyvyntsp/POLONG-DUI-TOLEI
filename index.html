@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>THI KÉO CO DÂY - PƠLONG DUI TƠLEI</title>
+    <style>
+        :root {
+            --primary-color: #ff6b6b;
+            --secondary-color: #4ecdc4;
+            --accent-color: #ffe66d;
+            --text-color: #2f2f2f;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background-color: #f0f0f0;
+        }
+
+        /* Màn hình nền */
+        #game-wrapper {
+            width: 100vw;
+            height: 100vh;
+            background-image: url('background.png');
+            background-size: cover;
+            background-position: center;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* Overlay mờ khi ở menu */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+        }
+
+        h1 { color: var(--primary-color); margin-bottom: 20px; }
+
+        .form-group { margin-bottom: 15px; text-align: left; }
+        label { font-weight: bold; display: block; margin-bottom: 5px; }
+        select, input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        button:hover { transform: scale(1.05); background: #ff5252; }
+
+        /* Giao diện game */
+        #game-ui {
+            width: 100%;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #question-box {
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+            width: 80%;
+            max-width: 800px;
+            border: 5px solid var(--primary-color);
+            text-align: center;
+        }
+
+        #question-text { font-size: 32px; font-weight: bold; margin-bottom: 10px; }
+        #timer { font-size: 24px; color: red; font-weight: bold; }
+
+        /* Khu vực kéo co */
+        #tug-of-war-area {
+            position: absolute;
+            bottom: 100px;
+            width: 100%;
+            height: 300px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #rope-container {
+            position: relative;
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .rope {
+            width: 2000px;
+            height: 15px;
+            background: #8b4513;
+            border-radius: 10px;
+            box-shadow: 0 4px 5px rgba(0,0,0,0.3);
+            position: relative;
+        }
+
+        .center-marker {
+            position: absolute;
+            left: 50%;
+            top: -20px;
+            width: 20px;
+            height: 50px;
+            background: red;
+            transform: translateX(-50%);
+        }
+
+        .team {
+            position: absolute;
+            width: 350px;
+            transition: 0.3s;
+        }
+
+        #team-a { right: 55%; transform: scaleX(-1); } /* Quay mặt về giữa */
+        #team-b { left: 55%; }
+
+        .team img { width: 100%; filter: drop-shadow(5px 5px 5px rgba(0,0,0,0.5)); }
+
+        .team-label {
+            position: absolute;
+            top: -40px;
+            width: 100%;
+            text-align: center;
+            font-weight: bold;
+            font-size: 24px;
+            color: white;
+            text-shadow: 2px 2px 4px #000;
+        }
+
+        /* Điều khiển âm thanh */
+        #audio-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.8);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 1000;
+        }
+
+        /* Phản hồi đáp án */
+        #feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            display: none;
+            width: 80%;
+            max-width: 500px;
+        }
+
+        .turn-indicator {
+            padding: 10px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: bold;
+            margin-bottom: 10px;
+            display: inline-block;
+        }
+
+        .bg-team-a { background-color: #ff4757; }
+        .bg-team-b { background-color: #2ed573; }
+    </style>
+</head>
+<body>
+
+<div id="game-wrapper">
+    <!-- Âm thanh -->
+    <audio id="bg-music" loop>
+        <source src="audio.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="audio-controls">
+        🔊 <input type="range" id="volume-slider" min="0" max="1" step="0.1" value="0.5">
+    </div>
+
+    <!-- Màn hình cài đặt -->
+    <div id="setup-screen" class="overlay">
+        <div class="container">
+            <h1>THI KÉO CO DÂY/h1>
+            
+            <div class="form-group">
+                <label>Thời gian mỗi câu (giây):</label>
+                <input type="number" id="setting-time" value="15" min="5">
+            </div>
+
+            <div class="form-group">
+                <label>Chế độ câu hỏi:</label>
+                <select id="setting-mode" onchange="toggleMode()">
+                    <option value="ai">AI tự tạo câu hỏi</option>
+                    <option value="manual">Tự nhập thủ công</option>
+                </select>
+            </div>
+
+            <div id="ai-settings">
+                <div class="form-group">
+                    <label>Lớp:</label>
+                    <select id="setting-grade" onchange="updateTopics()">
+                        <option value="1">Lớp 1</option>
+                        <option value="2">Lớp 2</option>
+                        <option value="3">Lớp 3</option>
+                        <option value="4">Lớp 4</option>
+                        <option value="5">Lớp 5</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Chủ đề:</label>
+                    <select id="setting-topic"></select>
+                </div>
+                <div class="form-group">
+                    <label>Số lượng câu hỏi:</label>
+                    <input type="number" id="setting-count" value="10" min="1">
+                </div>
+            </div>
+
+            <div id="manual-settings" style="display:none;">
+                <label>Nhập theo format (câu hỏi|đáp án):</label>
+                <textarea id="manual-input" rows="5" placeholder="2+3|5&#10;10-4|6"></textarea>
+            </div>
+
+            <button onclick="startGame()">BẮT ĐẦU CHƠI</button>
+        </div>
+    </div>
+
+    <!-- Giao diện Game chính -->
+    <div id="game-ui">
+        <div id="question-box">
+            <div id="current-turn-label" class="turn-indicator">Đến lượt: Đội A</div>
+            <div id="question-text">Câu hỏi sẽ hiện ở đây</div>
+            <div id="timer">15</div>
+            <div style="margin-top: 15px;">
+                <input type="text" id="answer-input" placeholder="Nhập đáp án..." style="width: 200px; font-size: 20px; text-align: center;">
+                <button onclick="submitAnswer()">Gửi</button>
+            </div>
+        </div>
+
+        <div id="tug-of-war-area">
+            <div id="rope-container">
+                <div class="rope">
+                    <div class="center-marker"></div>
+                </div>
+                <div id="team-a" class="team">
+                    <div class="team-label">ĐỘI A</div>
+                    <img src="team.png" alt="Team A">
+                </div>
+                <div id="team-b" class="team">
+                    <div class="team-label">ĐỘI B</div>
+                    <img src="team.png" alt="Team B">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal kết quả / Giải thích -->
+    <div id="feedback" class="container">
+        <h2 id="feedback-title">Thông báo</h2>
+        <p id="feedback-text" style="font-size: 1.2rem;"></p>
+        <button onclick="closeFeedback()">Tiếp tục</button>
+    </div>
+</div>
+
+<script>
+    // Dữ liệu chủ đề
+    const gradeTopics = {
+        "1": ["Cộng trừ phạm vi 20", "Cộng trừ phạm vi 100 (không nhớ)", "Hình học cơ bản"],
+        "2": ["Bảng nhân 2 và 5", "Cộng trừ có nhớ", "Đơn vị đo lường (kg, l, m)", "Xem đồng hồ"],
+        "3": ["Nhân chia số có 3 chữ số", "Tính chu vi diện tích hình vuông/chữ nhật", "Số đến 100.000"],
+        "4": ["Lớp triệu, hàng đơn vị", "Cộng trừ nhân chia phân số", "Góc nhọn/tù/bẹt", "Trung bình cộng", "Tổng-Tỉ/Hiệu-Tỉ"],
+        "5": ["Số thập phân", "Tính phần trăm", "Diện tích hình thang/tròn", "Thể tích hình khối", "Chuyển động đều"]
+    };
+
+    let gameState = {
+        questions: [],
+        currentIndex: 0,
+        timer: 0,
+        timerId: null,
+        ropeOffset: 0, // Đơn vị pixels, dương là Team A thắng, âm là Team B thắng
+        currentTurn: 'A', // 'A' hoặc 'B'
+        canRetry: true, // Nếu sai thì đội kia được trả lời
+        timePerQuestion: 15,
+        maxOffset: 300 // Ngưỡng chiến thắng
+    };
+
+    // Khởi tạo chủ đề
+    function updateTopics() {
+        const grade = document.getElementById('setting-grade').value;
+        const topicSelect = document.getElementById('setting-topic');
+        topicSelect.innerHTML = '';
+        gradeTopics[grade].forEach(t => {
+            let opt = document.createElement('option');
+            opt.value = t;
+            opt.innerText = t;
+            topicSelect.appendChild(opt);
+        });
+    }
+    updateTopics();
+
+    function toggleMode() {
+        const mode = document.getElementById('setting-mode').value;
+        document.getElementById('ai-settings').style.display = mode === 'ai' ? 'block' : 'none';
+        document.getElementById('manual-settings').style.display = mode === 'manual' ? 'block' : 'none';
+    }
+
+    // Hàm tạo câu hỏi tự động
+    function generateMath(grade, topic, count) {
+        let qs = [];
+        for(let i=0; i<count; i++) {
+            let q = "", a = "", e = "";
+            if(grade === "1") {
+                let n1 = Math.floor(Math.random()*10)+1;
+                let n2 = Math.floor(Math.random()*10)+1;
+                q = `${n1} + ${n2}`; a = n1 + n2; e = `Vì ${n1} cộng thêm ${n2} đơn vị bằng ${a}.`;
+            } else if(grade === "2") {
+                let n1 = [2, 5][Math.floor(Math.random()*2)];
+                let n2 = Math.floor(Math.random()*9)+1;
+                q = `${n1} x ${n2}`; a = n1 * n2; e = `Theo bảng nhân ${n1}, ${n1} lần ${n2} là ${a}.`;
+            } else if(grade === "3") {
+                let n1 = Math.floor(Math.random()*100)+50;
+                let n2 = Math.floor(Math.random()*3)+2;
+                q = `${n1} x ${n2}`; a = n1 * n2; e = `Thực hiện đặt tính: ${n1} nhân ${n2} được ${a}.`;
+            } else if(grade === "4") {
+                let tu = Math.floor(Math.random()*5)+1;
+                q = `Phân số 1/2 + ${tu}/2`; a = (1+tu)/2; e = `Cộng tử số với nhau, mẫu số giữ nguyên.`;
+            } else {
+                let n1 = (Math.random()*5).toFixed(1);
+                let n2 = (Math.random()*5).toFixed(1);
+                q = `${n1} + ${n2}`; a = (parseFloat(n1) + parseFloat(n2)).toFixed(1); e = `Cộng các phần thập phân và phần nguyên tương ứng.`;
+            }
+            qs.push({q, a: a.toString(), explain: e});
+        }
+        return qs;
+    }
+
+    function startGame() {
+        const mode = document.getElementById('setting-mode').value;
+        gameState.timePerQuestion = parseInt(document.getElementById('setting-time').value);
+        
+        if(mode === 'ai') {
+            const grade = document.getElementById('setting-grade').value;
+            const topic = document.getElementById('setting-topic').value;
+            const count = parseInt(document.getElementById('setting-count').value);
+            gameState.questions = generateMath(grade, topic, count);
+        } else {
+            const lines = document.getElementById('manual-input').value.split('\n');
+            gameState.questions = lines.filter(l => l.includes('|')).map(l => {
+                const p = l.split('|');
+                return { q: p[0].trim(), a: p[1].trim(), explain: "Đây là đáp án chính xác theo dữ liệu nhập." };
+            });
+        }
+
+        if(gameState.questions.length === 0) return alert("Vui lòng nhập câu hỏi!");
+
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('game-ui').style.display = 'flex';
+        
+        // Bật nhạc
+        const music = document.getElementById('bg-music');
+        music.play().catch(() => console.log("Cần tương tác để phát nhạc"));
+        
+        gameState.currentIndex = 0;
+        gameState.ropeOffset = 0;
+        gameState.currentTurn = 'A';
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        if(gameState.currentIndex >= gameState.questions.length) return endGame("Hết câu hỏi!");
+
+        const q = gameState.questions[gameState.currentIndex];
+        document.getElementById('question-text').innerText = q.q;
+        document.getElementById('answer-input').value = "";
+        document.getElementById('answer-input').focus();
+        
+        gameState.canRetry = true;
+        updateTurnUI();
+        startTimer();
+    }
+
+    function updateTurnUI() {
+        const label = document.getElementById('current-turn-label');
+        label.innerText = `Đến lượt: Đội ${gameState.currentTurn}`;
+        label.className = `turn-indicator bg-team-${gameState.currentTurn.toLowerCase()}`;
+    }
+
+    function startTimer() {
+        clearInterval(gameState.timerId);
+        gameState.timer = gameState.timePerQuestion;
+        document.getElementById('timer').innerText = gameState.timer;
+
+        gameState.timerId = setInterval(() => {
+            gameState.timer--;
+            document.getElementById('timer').innerText = gameState.timer;
+            if(gameState.timer <= 0) {
+                clearInterval(gameState.timerId);
+                handleWrong("Hết thời gian!");
+            }
+        }, 1000);
+    }
+
+    function submitAnswer() {
+        const userAns = document.getElementById('answer-input').value.trim();
+        const correctAns = gameState.questions[gameState.currentIndex].a;
+
+        if(userAns === correctAns) {
+            handleCorrect();
+        } else {
+            handleWrong("Sai rồi!");
+        }
+    }
+
+    function handleCorrect() {
+        clearInterval(gameState.timerId);
+        const pullPower = 60;
+        if(gameState.currentTurn === 'A') gameState.ropeOffset -= pullPower; // Kéo về trái (A)
+        else gameState.ropeOffset += pullPower; // Kéo về phải (B)
+
+        updateRope();
+        
+        showFeedback("Chính xác!", `Đội ${gameState.currentTurn} đã kéo dây thành công!`, true);
+    }
+
+    function handleWrong(msg) {
+        clearInterval(gameState.timerId);
+        const q = gameState.questions[gameState.currentIndex];
+
+        if(gameState.canRetry) {
+            gameState.canRetry = false;
+            gameState.currentTurn = (gameState.currentTurn === 'A' ? 'B' : 'A');
+            showFeedback(msg, `Cơ hội trả lời chuyển sang Đội ${gameState.currentTurn}!`, false);
+        } else {
+            showFeedback(msg, `Cả hai đội đều không ghi điểm. Đáp án là: ${q.a}. ${q.explain}`, false, true);
+        }
+    }
+
+    function updateRope() {
+        const container = document.getElementById('rope-container');
+        container.style.transform = `translateX(${-gameState.ropeOffset}px)`;
+
+        if(Math.abs(gameState.ropeOffset) >= gameState.maxOffset) {
+            endGame(gameState.ropeOffset < 0 ? "Đội A THẮNG CHUNG CUỘC!" : "Đội B THẮNG CHUNG CUỘC!");
+        }
+    }
+
+    function showFeedback(title, text, isCorrect, nextQ = false) {
+        document.getElementById('feedback-title').innerText = title;
+        document.getElementById('feedback-title').style.color = isCorrect ? "green" : "red";
+        document.getElementById('feedback-text').innerText = text;
+        document.getElementById('feedback').style.display = 'block';
+        gameState.nextQAfterFeedback = nextQ || isCorrect;
+    }
+
+    function closeFeedback() {
+        document.getElementById('feedback').style.display = 'none';
+        if(Math.abs(gameState.ropeOffset) >= gameState.maxOffset) return;
+
+        if(gameState.nextQAfterFeedback) {
+            gameState.currentIndex++;
+            gameState.currentTurn = (gameState.currentIndex % 2 === 0 ? 'A' : 'B');
+            loadQuestion();
+        } else {
+            updateTurnUI();
+            startTimer();
+        }
+    }
+
+    function endGame(msg) {
+        clearInterval(gameState.timerId);
+        const penalties = [
+            "Đứng dậy đọc bảng nhân 2!",
+            "Hát một bài hát thiếu nhi thật hay!",
+            "Đặt một câu hỏi toán học đố đội bạn!",
+            "Nhảy lò cò quanh chỗ ngồi 3 vòng!"
+        ];
+        const randomPenalty = penalties[Math.floor(Math.random()*penalties.length)];
+        
+        document.getElementById('feedback-title').innerText = "KẾT THÚC";
+        document.getElementById('feedback-text').innerHTML = `<b>${msg}</b><br><br>Hình phạt cho đội thua: <i>${randomPenalty}</i>`;
+        document.getElementById('feedback').style.display = 'block';
+        
+        // Nút chơi lại
+        const btn = document.querySelector('#feedback button');
+        btn.innerText = "Chơi lại từ đầu";
+        btn.onclick = () => location.reload();
+    }
+
+    // Slider âm lượng
+    document.getElementById('volume-slider').oninput = function() {
+        document.getElementById('bg-music').volume = this.value;
+    };
+</script>
+
+</body>
+</html>
